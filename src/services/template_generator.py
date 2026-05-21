@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -7,7 +8,13 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from config import APP_CONFIG
+from src.config import ExcelLayoutConfig
+
+
+@dataclass(frozen=True)
+class GenerateResult:
+    path: Path
+    message: str
 
 
 def _style_header_cell(cell) -> None:
@@ -24,7 +31,7 @@ def _style_body_cell(cell) -> None:
     cell.border = Border(left=side, right=side, top=side, bottom=side)
 
 
-def _column_width(header: str) -> int:
+def _column_width(header: str, config: ExcelLayoutConfig) -> int:
     wide_headers = {
         "Nama peserta didik",
         "Tempat dan tanggal lahir",
@@ -47,37 +54,75 @@ def _column_width(header: str) -> int:
         "Nama panggilan",
     }
 
+    short_headers = {"S", "I", "A"}
+
     if header in wide_headers:
-        return 28
+        return 30
 
     if header in medium_headers:
-        return 20
+        return 22
 
-    if header in APP_CONFIG.excel.score_headers:
+    if header in config.score_headers:
         return 14
 
-    if header in {"S", "I", "A"}:
+    if header in short_headers:
         return 8
 
     return 16
 
 
+def _dummy_value(header: str, row_number: int, config: ExcelLayoutConfig):
+    student_number = row_number - 1
+
+    dummy_map = {
+        "Nama peserta didik": f"Murid {student_number:02d}",
+        "Nama panggilan": f"Murid{student_number}",
+        "Nomor induk_NISN": f"2025{student_number:04d}",
+        "Jenis kelamin": "L",
+        "Tempat dan tanggal lahir": "Medan, 1 Januari 2020",
+        "Agama": "Kristen",
+        "Anak ke": 1,
+        "Alamat": "Medan",
+        "Telepon": "-",
+        "Diterima di kelompok": "B4",
+        "Diterima tanggal": "1 Juli 2025",
+        "Nama ayah": f"Ayah Murid {student_number:02d}",
+        "Nama ibu": f"Ibu Murid {student_number:02d}",
+        "Pekerjaan ayah": "-",
+        "Pekerjaan ibu": "-",
+        "Nama wali": "-",
+        "Alamat wali": "-",
+        "Telepon wali": "-",
+        "Pekerjaan wali": "-",
+        "Kelompok": "B4",
+        "Semester": config.semester_value,
+        "T.P.": "2025/2026",
+        "Kelakuan": "A",
+        "S": "-",
+        "I": "-",
+        "A": "-",
+        "Tanggal pembagian rapor": "20 Desember 2025",
+        "Guru": "-",
+        "Naik ke ": "-",
+        "Tanggal masuk": "1 Juli 2025",
+    }
+
+    if header in dummy_map:
+        return dummy_map[header]
+
+    if header in config.score_headers:
+        # Variasi nilai dummy 8.0 sampai 9.4
+        return round(8 + ((student_number % 7) * 0.2), 1)
+
+    return ""
+
+
 def generate_student_data_template(
-    output_dir: Path | None = None,
-    max_students: int | None = None,
-) -> Path:
-    """
-    Generate file Excel kosong untuk input data murid dan nilai.
-
-    Catatan:
-    - Tidak memasukkan P1-P17.
-    - P1-P17 akan dibuat otomatis saat generate database.
-    - Header mengikuti APP_CONFIG.excel.student_data_headers.
-    """
-    config = APP_CONFIG.excel
-    output_dir = output_dir or APP_CONFIG.output_dir
-    max_students = max_students or config.default_max_students
-
+    output_dir: Path,
+    config: ExcelLayoutConfig,
+    row_count: int,
+    with_dummy_data: bool = False,
+) -> GenerateResult:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     wb = Workbook()
@@ -89,29 +134,33 @@ def generate_student_data_template(
     for col_idx, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col_idx, value=header)
         _style_header_cell(cell)
-        ws.column_dimensions[get_column_letter(col_idx)].width = _column_width(header)
+        ws.column_dimensions[get_column_letter(col_idx)].width = _column_width(header, config)
 
-    for row_idx in range(2, max_students + 2):
-        for col_idx in range(1, len(headers) + 1):
-            _style_body_cell(ws.cell(row=row_idx, column=col_idx))
+    for row_idx in range(2, row_count + 2):
+        for col_idx, header in enumerate(headers, start=1):
+            value = _dummy_value(header, row_idx, config) if with_dummy_data else ""
 
-        # Default supaya user tidak perlu isi berulang.
-        header_to_col = {header: idx for idx, header in enumerate(headers, start=1)}
+            # Tetap isi default walaupun dummy off untuk kolom yang repetitif.
+            if not with_dummy_data:
+                if header == "Semester":
+                    value = config.semester_value
+                elif header == "T.P.":
+                    value = "2025/2026"
+                elif header == "Kelompok":
+                    value = "B4"
 
-        if "Semester" in header_to_col:
-            ws.cell(row=row_idx, column=header_to_col["Semester"], value=config.semester_value)
-
-        if "T.P." in header_to_col:
-            ws.cell(row=row_idx, column=header_to_col["T.P."], value="2025/2026")
-
-        if "Kelompok" in header_to_col:
-            ws.cell(row=row_idx, column=header_to_col["Kelompok"], value="B4")
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            _style_body_cell(cell)
 
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = output_dir / f"TEMPLATE_DATA_MURID_NILAI_{max_students}_MURID_{timestamp}.xlsx"
+    output_path = output_dir / f"TEMPLATE_DATA_MURID_NILAI_{row_count}_MURID_{timestamp}.xlsx"
 
     wb.save(output_path)
-    return output_path
+
+    return GenerateResult(
+        path=output_path,
+        message=f"Template data murid/nilai berhasil dibuat untuk {row_count} murid.",
+    )
