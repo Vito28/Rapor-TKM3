@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from anyio import Path
 import streamlit as st
 
+from dataclasses import replace
+
 from src.config import APP_CONFIG, ExcelLayoutConfig
-from src.services.database_generator import generate_database, predicate_from_score
+from src.services.database_generator import generate_database
 from src.services.horizontal_generator import generate_horizontal_format
 from src.services.runtime_files import get_session_runtime_dir, read_bytes, save_uploaded_file
 from src.services.template_generator import generate_student_data_template
@@ -56,7 +59,8 @@ def render_app() -> None:
             database_sheet = st.text_input("Sheet database template", value=config.database_sheet)
             name_header = st.text_input("Header nama murid", value=config.name_header)
 
-        runtime_config = ExcelLayoutConfig(
+        runtime_config = replace(
+            config,
             template_sheet=template_sheet,
             student_data_sheet=student_sheet,
             database_sheet=database_sheet,
@@ -83,16 +87,23 @@ def render_app() -> None:
                     row_count=int(template_rows),
                     with_dummy_data=with_dummy_data,
                 )
+                st.session_state["template_result_path"] = str(result.path)
+                st.session_state["template_result_message"] = result.message
                 st.success(result.message)
+            except Exception as exc:
+                st.error(f"Generate template gagal: {exc}")
+
+        if "template_result_path" in st.session_state:
+            template_path = Path(st.session_state["template_result_path"])
+        
+            if template_path.exists():
                 st.download_button(
                     label="Download Template Data Murid/Nilai",
-                    data=read_bytes(result.path),
-                    file_name=result.path.name,
+                    data=read_bytes(template_path),
+                    file_name=template_path.name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                 )
-            except Exception as exc:
-                st.error(f"Generate template gagal: {exc}")
 
     st.subheader("1. Upload file")
     col1, col2, col3 = st.columns(3)
