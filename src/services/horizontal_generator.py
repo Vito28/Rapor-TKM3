@@ -9,9 +9,9 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from config import ExcelLayoutConfig
-from models import GeneratedWorkbookResult
-from utils.excel_reader import extract_student_names
+from src.config import ExcelLayoutConfig
+from src.models import GeneratedWorkbookResult
+from src.utils.excel_reader import extract_student_names
 
 
 def copy_cell_style(src_cell, dst_cell) -> None:

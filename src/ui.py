@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import streamlit as st
 
-from config import APP_CONFIG, ExcelLayoutConfig
-from services.database_generator import generate_database, predicate_from_score
-from services.horizontal_generator import generate_horizontal_format
-from services.runtime_files import get_session_runtime_dir, read_bytes, save_uploaded_file
-from services.template_generator import generate_student_data_template
-from utils.excel_reader import extract_student_names, read_rows_by_header
+from src.config import APP_CONFIG, ExcelLayoutConfig
+from src.services.database_generator import generate_database, predicate_from_score
+from src.services.horizontal_generator import generate_horizontal_format
+from src.services.runtime_files import get_session_runtime_dir, read_bytes, save_uploaded_file
+from src.services.template_generator import generate_student_data_template
+from src.utils.excel_reader import extract_student_names, read_rows_by_header
 
 
 def _render_predicate_table() -> None:

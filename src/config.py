@@ -142,9 +142,42 @@ class ExcelLayoutConfig:
             "Alpa": "A",
         }
     )
+    
+    @property
+    def score_headers(self) -> tuple[str, ...]:
+        """Header nilai angka saja, tanpa P1-P17."""
+        return tuple(score_header for score_header, _ in self.score_to_predicate_headers)
 
+    @property
+    def predicate_headers(self) -> tuple[str, ...]:
+        """Header predikat otomatis P1-P17."""
+        return tuple(predicate_header for _, predicate_header in self.score_to_predicate_headers)
+
+    @property
+    def required_student_headers(self) -> tuple[str, ...]:
+        """Header minimal yang wajib ada di file data murid/nilai."""
+        return (
+            self.name_header,
+            "Nama panggilan",
+            "Nomor induk_NISN",
+            "Kelompok",
+            "Semester",
+            "T.P.",
+            *self.score_headers,
+        )
+
+    @property
+    def database_output_headers(self) -> tuple[str, ...]:
+        """
+        Header yang akan dicari di template DATABASE SEMESTER 1.
+        Berisi biodata + nilai + predikat otomatis.
+        """
+        return (
+            *self.student_data_headers,
+            *self.predicate_headers,
+        )
+        
     predicate: ScorePredicateConfig = ScorePredicateConfig()
-
 
 @dataclass(frozen=True)
 class AppConfig:
