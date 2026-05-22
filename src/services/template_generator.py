@@ -54,8 +54,6 @@ def _column_width(header: str, config: ExcelLayoutConfig) -> int:
         "Nama panggilan",
     }
 
-    short_headers = {"S", "I", "A"}
-
     if header in wide_headers:
         return 30
 
@@ -65,7 +63,7 @@ def _column_width(header: str, config: ExcelLayoutConfig) -> int:
     if header in config.score_headers:
         return 14
 
-    if header in short_headers:
+    if header in {"S", "I", "A"}:
         return 8
 
     return 16
@@ -111,7 +109,6 @@ def _dummy_value(header: str, row_number: int, config: ExcelLayoutConfig):
         return dummy_map[header]
 
     if header in config.score_headers:
-        # Variasi nilai dummy 8.0 sampai 9.4
         return round(8 + ((student_number % 7) * 0.2), 1)
 
     return ""
@@ -140,7 +137,6 @@ def generate_student_data_template(
         for col_idx, header in enumerate(headers, start=1):
             value = _dummy_value(header, row_idx, config) if with_dummy_data else ""
 
-            # Tetap isi default walaupun dummy off untuk kolom yang repetitif.
             if not with_dummy_data:
                 if header == "Semester":
                     value = config.semester_value
