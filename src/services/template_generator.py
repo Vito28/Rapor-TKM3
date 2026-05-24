@@ -19,6 +19,7 @@ class GenerateResult:
 
 def _style_header_cell(cell) -> None:
     side = Side(style="thin", color="999999")
+
     cell.font = Font(bold=True)
     cell.fill = PatternFill("solid", fgColor="D9EAD3")
     cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -27,6 +28,7 @@ def _style_header_cell(cell) -> None:
 
 def _style_body_cell(cell) -> None:
     side = Side(style="thin", color="DDDDDD")
+
     cell.alignment = Alignment(vertical="center", wrap_text=True)
     cell.border = Border(left=side, right=side, top=side, bottom=side)
 
@@ -99,10 +101,10 @@ def _dummy_value(header: str, row_number: int, config: ExcelLayoutConfig):
         "S": "-",
         "I": "-",
         "A": "-",
-        "Tanggal pembagian rapor": "20 Desember 2025",
+        "Tanggal pembagian rapor": "20/12/2025",
         "Guru": "-",
         "Naik ke ": "-",
-        "Tanggal masuk": "1 Juli 2025",
+        "Tanggal masuk": "01/07/2025",
     }
 
     if header in dummy_map:
@@ -119,8 +121,10 @@ def generate_student_data_template(
     config: ExcelLayoutConfig,
     row_count: int,
     with_dummy_data: bool = False,
+    default_values: dict[str, object] | None = None,
 ) -> GenerateResult:
     output_dir.mkdir(parents=True, exist_ok=True)
+    default_values = default_values or {}
 
     wb = Workbook()
     ws = wb.active
@@ -137,7 +141,9 @@ def generate_student_data_template(
         for col_idx, header in enumerate(headers, start=1):
             value = _dummy_value(header, row_idx, config) if with_dummy_data else ""
 
-            if not with_dummy_data:
+            if header in default_values and default_values[header] not in ("", None):
+                value = default_values[header]
+            elif not with_dummy_data:
                 if header == "Semester":
                     value = config.semester_value
                 elif header == "T.P.":
